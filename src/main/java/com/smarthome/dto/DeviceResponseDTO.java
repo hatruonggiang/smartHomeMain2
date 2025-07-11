@@ -8,6 +8,6 @@ public class DeviceResponseDTO {
     private String name;
     private String type;
     private boolean status;
-    private String description; // ✅ thêm trường mô tả
-    private Long roomId;        // ✅ để biết thiết bị thuộc phòng nào
+    private String description; 
+    private Long roomId;        
 }

@@ -1,4 +1,0 @@
-device.getRoom() = Tìm và trả về room chứa device
-room.getDevices() = Tìm và trả về 1 list các Devices
-2 kiến thức trên tưởng là kiến thức mới, tuy nhiên nó chỉ là 1 hàm getter mà thôi
-
