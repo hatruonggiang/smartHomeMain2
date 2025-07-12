@@ -32,7 +32,7 @@ public class AuthService {
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setEmail(request.getEmail());
 
-        System.out.println("User before save - Username: " + user.getUsername());
+        System.out.println("User before save -Username: " + user.getUsername());
 
         userRepository.save(user);
         return jwtUtil.generateToken(user.getUsername());
