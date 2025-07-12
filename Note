@@ -1,0 +1,4 @@
+Các tính năng hiện tại
+1. ForgotPassword
+    Tạm thời hardcore link backend là local tại tính năng gửi email, sau này sẽ thay bằng link đúng
+

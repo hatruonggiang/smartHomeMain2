@@ -3,7 +3,6 @@ package com.smarthome.dto;
 import lombok.Data;
 
 @Data
-public class LoginRequest {
+public class ForgotPasswordRequestDTO {
     private String email;
-    private String password;
 }

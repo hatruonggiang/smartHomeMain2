@@ -23,14 +23,26 @@ public class AuthController {
     }
 
     @PostMapping("/forgot-password")
-    public ResponseEntity<Void> forgotPassword(@RequestParam String email) {
-        authService.forgotPassword(email);
-        return ResponseEntity.ok().build();
+    public ResponseEntity<String> forgotPassword(@RequestBody ForgotPasswordRequestDTO request) {
+        String message = authService.forgotPassword(request);
+        return ResponseEntity.ok(message);
     }
 
     @PostMapping("/reset-password")
-    public ResponseEntity<Void> resetPassword(@RequestParam String token, @RequestParam String newPassword) {
-        authService.resetPassword(token, newPassword);
-        return ResponseEntity.ok().build();
+    public ResponseEntity<String> resetPassword(@RequestBody ResetPasswordRequestDTO request) {
+        String message = authService.resetPassword(request);
+
+        // Kiểm tra lỗi validation và trả về status code phù hợp
+        if (message.contains("do not match") ||
+                message.contains("required") ||
+                message.contains("6 characters")) {
+            return ResponseEntity.badRequest().body(message);
+        }
+
+        if (message.contains("expired") || message.contains("Invalid")) {
+            return ResponseEntity.badRequest().body(message);
+        }
+
+        return ResponseEntity.ok(message);
     }
 }
