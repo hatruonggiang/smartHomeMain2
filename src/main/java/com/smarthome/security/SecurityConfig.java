@@ -43,7 +43,7 @@ public class SecurityConfig {
         config.setAllowedOrigins(List.of("http://localhost:3000")); // Frontend local
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
-        config.setAllowCredentials(true); // nếu dùng cookie/token
+        config.setAllowCredentials(true); // nếu dùng cookie/tokenn
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
