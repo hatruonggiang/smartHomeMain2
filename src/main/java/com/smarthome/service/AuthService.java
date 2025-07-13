@@ -35,7 +35,7 @@ public class AuthService {
         System.out.println("User before save - Username: " + user.getUsername());
 
         userRepository.save(user);
-        return jwtUtil.generateToken(user.getUsername());
+        return jwtUtil.generateToken(user.getEmail());
     }
 
     public String login(LoginRequest request) {
@@ -46,7 +46,7 @@ public class AuthService {
 
         User user = userRepository.findByEmail(email);
         if (user != null && passwordEncoder.matches(password, user.getPassword())) {
-            return jwtUtil.generateToken(user.getUsername());
+            return jwtUtil.generateToken(user.getEmail());
         }
         throw new RuntimeException("Invalid credentials");
     }
@@ -93,4 +93,12 @@ public class AuthService {
         userRepository.save(user);
         return "Password has been reset successfully";
     }
+    public UserInfoDTO getCurrentUser(String email) {
+        User user = userRepository.findByEmail(email);
+        if (user == null) {
+            throw new RuntimeException("User not found");
+        }
+        return new UserInfoDTO(user.getId(), user.getUsername(), user.getEmail());
+    }
+
 }

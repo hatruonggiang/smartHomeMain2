@@ -17,12 +17,12 @@ public class HouseService {
     @Autowired
     private UserRepository userRepository;
 
-    public House createHouse(HouseDTO houseDTO, String username) {
+    public House createHouse(HouseDTO houseDTO, String email) {
         House house = new House();
         house.setName(houseDTO.getName());
         house.setAddress(houseDTO.getAddress());
         house.setDescription(houseDTO.getDescription()); 
-        house.setOwner(userRepository.findByUsername(username));
+        house.setOwner(userRepository.findByEmail(email));
         return houseRepository.save(house);
     }
 
@@ -38,8 +38,8 @@ public class HouseService {
         houseRepository.deleteById(id);
     }
 
-    public List<House> getHousesOwnedBy(String username) {
-        return houseRepository.findAllByOwner_Username(username);
+    public List<House> getHousesOwnedByEmail(String email) {
+        return houseRepository.findAllByOwner_Email(email);
     }
 
     @Transactional

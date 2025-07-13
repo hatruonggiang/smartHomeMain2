@@ -1,9 +1,11 @@
 package com.smarthome.controller;
 
 import com.smarthome.dto.*;
+import com.smarthome.model.User;
 import com.smarthome.service.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -45,4 +47,13 @@ public class AuthController {
 
         return ResponseEntity.ok(message);
     }
+
+    @GetMapping("/me")
+    public ResponseEntity<UserInfoDTO> getCurrentUser(Authentication authentication) {
+        String email = authentication.getName();
+        UserInfoDTO userInfo = authService.getCurrentUser(email);
+        return ResponseEntity.ok(userInfo);
+    }
+
+
 }

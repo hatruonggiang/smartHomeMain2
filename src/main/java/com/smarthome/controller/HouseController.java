@@ -21,8 +21,8 @@ public class HouseController {
 
     @PostMapping
     public ResponseEntity<House> createHouse(@RequestBody HouseDTO houseDTO) {
-        String username = SecurityContextHolder.getContext().getAuthentication().getName();
-        return ResponseEntity.ok(houseService.createHouse(houseDTO, username));
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        return ResponseEntity.ok(houseService.createHouse(houseDTO, email));
     }
 
     @PutMapping("/{id}")
@@ -40,8 +40,8 @@ public class HouseController {
 
     @GetMapping
     public ResponseEntity<List<HouseResponseDTO>> getHouses() {
-        String username = SecurityContextHolder.getContext().getAuthentication().getName();
-        List<House> houses = houseService.getHousesOwnedBy(username);
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        List<House> houses = houseService.getHousesOwnedByEmail(email);
         List<HouseResponseDTO> dtos = houses.stream()
             .map(houseService::toDTO)
             .toList();
