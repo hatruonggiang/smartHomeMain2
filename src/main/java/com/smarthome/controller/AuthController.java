@@ -4,56 +4,84 @@ import com.smarthome.dto.*;
 import com.smarthome.model.User;
 import com.smarthome.service.*;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/auth")
+@RequestMapping("/auth")
+@CrossOrigin(origins = "*")
 public class AuthController {
+
     @Autowired
     private AuthService authService;
 
-    @PostMapping("/register")
-    public ResponseEntity<String> register(@RequestBody RegisterRequest request) {
-        return ResponseEntity.ok(authService.register(request));
+    @PostMapping("/login")
+    public ResponseEntity<?> login(@RequestBody LoginRequest request) {
+        System.out.println("🟢 [LOGIN] Received request: email=" + request.getEmail() + ", password=" + request.getPassword());
+        try {
+            AuthResponse response = authService.login(request.getEmail(), request.getPassword());
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(new ErrorResponse("AUTHENTICATION_FAILED", e.getMessage()));
+        }
     }
 
-    @PostMapping("/login")
-    public ResponseEntity<String> login(@RequestBody LoginRequest request) {
-        return ResponseEntity.ok(authService.login(request));
+    @PostMapping("/register")
+    public ResponseEntity<?> register(@RequestBody RegisterRequest request) {
+        try {
+            UserResponse response = authService.register(request);
+            return ResponseEntity.status(HttpStatus.CREATED)
+                    .body(new ApiResponse(true, "Registration successful. Please check your email for verification.", response));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new ErrorResponse("REGISTRATION_FAILED", e.getMessage()));
+        }
     }
+
+    @PostMapping("/logout")
+    public ResponseEntity<?> logout(@RequestHeader("Authorization") String token) {
+        try {
+            authService.logout(token);
+            return ResponseEntity.ok(new ApiResponse(true, "Logged out successfully", null));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new ErrorResponse("LOGOUT_FAILED", e.getMessage()));
+        }
+    }
+
+//    @PostMapping("/refresh")
+//    public ResponseEntity<?> refreshToken(@RequestBody RefreshTokenRequest request) {
+//        try {
+//            TokenResponse response = authService.refreshToken(request.getRefreshToken());
+//            return ResponseEntity.ok(response);
+//        } catch (Exception e) {
+//            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+//                    .body(new ErrorResponse("TOKEN_REFRESH_FAILED", e.getMessage()));
+//        }
+//    }
 
     @PostMapping("/forgot-password")
-    public ResponseEntity<String> forgotPassword(@RequestBody ForgotPasswordRequestDTO request) {
-        String message = authService.forgotPassword(request);
-        return ResponseEntity.ok(message);
+    public ResponseEntity<?> forgotPassword(@RequestBody ForgotPasswordRequest request) {
+        try {
+            authService.forgotPassword(request.getEmail());
+            return ResponseEntity.ok(new ApiResponse(true, "Password reset email sent successfully", null));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new ErrorResponse("FORGOT_PASSWORD_FAILED", e.getMessage()));
+        }
     }
 
     @PostMapping("/reset-password")
-    public ResponseEntity<String> resetPassword(@RequestBody ResetPasswordRequestDTO request) {
-        String message = authService.resetPassword(request);
-
-        // Kiểm tra lỗi validation và trả về status code phù hợp
-        if (message.contains("do not match") ||
-                message.contains("required") ||
-                message.contains("6 characters")) {
-            return ResponseEntity.badRequest().body(message);
+    public ResponseEntity<?> resetPassword(@RequestBody ResetPasswordRequest request) {
+        try {
+            authService.resetPassword(request.getToken(), request.getNewPassword());
+            return ResponseEntity.ok(new ApiResponse(true, "Password reset successful", null));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new ErrorResponse("RESET_PASSWORD_FAILED", e.getMessage()));
         }
-
-        if (message.contains("expired") || message.contains("Invalid")) {
-            return ResponseEntity.badRequest().body(message);
-        }
-
-        return ResponseEntity.ok(message);
     }
-
-    @GetMapping("/me")
-    public ResponseEntity<UserInfoDTO> getCurrentUser(Authentication authentication) {
-        String email = authentication.getName();
-        UserInfoDTO userInfo = authService.getCurrentUser(email);
-        return ResponseEntity.ok(userInfo);
-    }
-
-
 }

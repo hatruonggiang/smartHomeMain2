@@ -1,104 +1,174 @@
 package com.smarthome.service;
 
 import com.smarthome.dto.*;
-import com.smarthome.model.*;
-import com.smarthome.repository.*;
-import com.smarthome.security.JwtUtil;
-import org.springframework.stereotype.Service;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import com.smarthome.model.User;
+import com.smarthome.repository.UserRepository;
+import com.smarthome.security.JwtTokenProvider;
+import com.smarthome.exception.AuthenticationException;
+import com.smarthome.exception.ResourceNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
+@Transactional
 public class AuthService {
+
     @Autowired
     private UserRepository userRepository;
+
     @Autowired
-    private BCryptPasswordEncoder passwordEncoder;
+    private PasswordEncoder passwordEncoder;
+
     @Autowired
-    private JwtUtil jwtUtil;
+    private JwtTokenProvider jwtTokenProvider;
+
     @Autowired
-    EmailService emailService;
+    private EmailService emailService;
 
-    public String register(RegisterRequest request) {
-        System.out.println("Username from request: " + request.getUsername());
-        System.out.println("Password from request: " + request.getPassword());
-        System.out.println("Email from request: " + request.getEmail());
-
-        User user = new User();
-        user.setUsername(request.getUsername());
-        user.setPassword(passwordEncoder.encode(request.getPassword()));
-        user.setEmail(request.getEmail());
-
-        System.out.println("User before save - Username: " + user.getUsername());
-
-        userRepository.save(user);
-        return jwtUtil.generateToken(user.getEmail());
+    public AuthResponse login(String email, String password) {
+        User user = validateLogin(email, password);
+        String token = jwtTokenProvider.generateToken(user);
+        return buildAuthResponse(user, token);
     }
 
-    public String login(LoginRequest request) {
-        String email = request.getEmail();
-        String password = request.getPassword();
-        System.out.println("Email from request: " + email);
-        System.out.println("Password from request: " + password);
 
+    public UserResponse register(RegisterRequest request) {
+        validateEmailUniqueness(request.getEmail());
+
+        User user = buildUserFromRequest(request);
+        User savedUser = userRepository.save(user);
+
+        String verificationToken = generateAndStoreVerificationToken(savedUser.getId());
+        sendVerificationEmail(savedUser, verificationToken);
+
+        return mapToUserResponse(savedUser);
+    }
+
+
+    public void logout(String token) {
+        // Extract token from Bearer header
+        String actualToken = token.replace("Bearer ", "");
+
+        // Get user ID from token
+        Long userId = jwtTokenProvider.getUserIdFromToken(actualToken);
+    }
+
+    public void forgotPassword(String email) {
         User user = userRepository.findByEmail(email);
-        if (user != null && passwordEncoder.matches(password, user.getPassword())) {
-            return jwtUtil.generateToken(user.getEmail());
+        if (user == null) {
+            throw new AuthenticationException("Invalid email");
         }
-        throw new RuntimeException("Invalid credentials");
+
+        // Generate password reset token
+        String resetToken = UUID.randomUUID().toString();
+//        redisService.storePasswordResetToken(user.getId(), resetToken);
+
+        // Send password reset email
+        emailService.sendPasswordResetEmail(user.getEmail(), user.getName(), resetToken);
     }
 
-    public String forgotPassword(ForgotPasswordRequestDTO request) {
-        User user = userRepository.findByEmail(request.getEmail());
+    public void resetPassword(String token, String newPassword) {
+//        Long userId = redisService.getUserIdFromPasswordResetToken(token);
+
+//        if (userId == null) {
+//            throw new AuthenticationException("Invalid or expired reset token");
+//        }
+//
+//        User user = userRepository.findById(userId)
+//                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+//
+//        user.setPassword(passwordEncoder.encode(newPassword));
+//        user.setUpdatedAt(LocalDateTime.now());
+//        userRepository.save(user);
+
+//        // Remove reset token from Redis
+//        redisService.deletePasswordResetToken(token);
+//
+//        // Invalidate all refresh tokens for this user
+//        redisService.deleteRefreshToken(userId);
+    }
+
+    public User getCurrentUser(String token) {
+        String actualToken = token.replace("Bearer ", "");
+        Long userId = jwtTokenProvider.getUserIdFromToken(actualToken);
+
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+    }
+
+    private User validateLogin(String email, String password) {
+        User user = userRepository.findByEmail(email);
         if (user == null) {
-            return "User not found with email: " + request.getEmail();
+            throw new AuthenticationException("Invalid email");
         }
 
+        if (!passwordEncoder.matches(password, user.getPassword())) {
+            throw new AuthenticationException("Password not correct");
+        }
+        return user;
+    }
+    private void validateEmailUniqueness(String email) {
+        if (userRepository.existsByEmail(email)) {
+            throw new AuthenticationException("Email already exists");
+        }
+    }
+
+    private AuthResponse buildAuthResponse(User user, String token) {
+        return AuthResponse.builder()
+                .success(true)
+                .token(token)
+                .user(UserResponse.builder()
+                        .id(user.getId())
+                        .email(user.getEmail())
+                        .name(user.getName())
+                        .role(user.getRole())
+                        .permissions(List.of("read", "write", "delete", "admin"))
+                        .build())
+                .build();
+    }
+
+    private User buildUserFromRequest(RegisterRequest request) {
+        return User.builder()
+                .email(request.getEmail())
+                .password(passwordEncoder.encode(request.getPassword()))
+                .name(request.getName())
+                .phone(request.getPhone())
+                .role("user")
+                .enabled(false)
+                .emailVerified(false)
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
+                .build();
+    }
+
+    private String generateAndStoreVerificationToken(Long userId) {
         String token = UUID.randomUUID().toString();
-        user.setResetPasswordToken(token);
-        user.setResetTokenExpiry(LocalDateTime.now().plusHours(1));
-        userRepository.save(user);
-
-        emailService.sendResetPasswordEmail(user.getEmail(), token);
-
-        return "Password reset link has been sent";
+//        redisService.storeEmailVerificationToken(userId, token);
+        return token;
     }
 
-    public String resetPassword(ResetPasswordRequestDTO request) {
-        String newPassword = request.getNewPassword();
-        String token = request.getToken();
-        String confirmPassword = request.getConfirmPassword();
-        User user = userRepository.findByResetPasswordToken(token);
-
-        if(user == null){
-            return "Reset token has expired";
-        }
-        if(newPassword == null || newPassword.trim().length() < 6){
-            return "Password must be at least 6 characters long";
-        }
-        if (!newPassword.equals(confirmPassword)) {
-            return "Passwords do not match";
-        }
-        if (user.getResetTokenExpiry() != null &&
-                user.getResetTokenExpiry().isBefore(LocalDateTime.now())) {
-            return "Reset token has expired";
-        }
-
-        user.setPassword(passwordEncoder.encode(newPassword));
-        user.setResetPasswordToken(null);
-        user.setResetTokenExpiry(null);
-        userRepository.save(user);
-        return "Password has been reset successfully";
+    private void sendVerificationEmail(User user, String token) {
+        emailService.sendVerificationEmail(
+                user.getEmail(),
+                user.getName(),
+                token
+        );
     }
-    public UserInfoDTO getCurrentUser(String email) {
-        User user = userRepository.findByEmail(email);
-        if (user == null) {
-            throw new RuntimeException("User not found");
-        }
-        return new UserInfoDTO(user.getId(), user.getUsername(), user.getEmail());
+
+    private UserResponse mapToUserResponse(User user) {
+        return UserResponse.builder()
+                .id(user.getId())
+                .email(user.getEmail())
+                .name(user.getName())
+                .build();
     }
 
 }

@@ -3,8 +3,16 @@ package com.smarthome.dto;
 import lombok.Data;
 
 @Data
-public class ResetPasswordRequestDTO {
+public class ResetPasswordRequest {
     private String token;
     private String newPassword;
-    private String confirmPassword;
+
+    public String getToken() {
+        return token;
+    }
+
+    public String getNewPassword() {
+        return newPassword;
+    }
+
 }
