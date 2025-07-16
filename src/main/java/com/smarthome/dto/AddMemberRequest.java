@@ -1,6 +1,7 @@
-package com.smarthome.repository;
+package com.smarthome.dto;
 
 import com.smarthome.enums.HouseMemberRole;
+import jakarta.validation.constraints.NotBlank;
 
 public class AddMemberRequest {
     private Long houseId;

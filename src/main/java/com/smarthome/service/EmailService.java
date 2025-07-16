@@ -11,39 +11,15 @@ public class EmailService {
     @Autowired
     private JavaMailSender mailSender;
 
-    public void sendResetPasswordEmail(String toEmail, String token) {
+    // Gửi email đặt lại mật khẩu
+    public void sendPasswordResetEmail(String email, String name, String token) {
         try {
-            SimpleMailMessage message = new SimpleMailMessage();
-            message.setTo(toEmail);
-            message.setSubject("Password Reset Request");
-            message.setText(buildEmailContent(token));
-            message.setFrom("hatruonggiang222@gmail.com");
+            String resetLink = "https://your-frontend.com/reset-password?token=" + token;
 
-            mailSender.send(message);
-            System.out.println("Email sent successfully to: " + toEmail);
-
-        } catch (Exception e) {
-            System.err.println("Failed to send email: " + e.getMessage());
-            throw new RuntimeException("Failed to send email: " + e.getMessage());
-        }
-    }
-
-    private String buildEmailContent(String token) {
-        return "Hi,\n\n" +
-                "You requested a password reset. Click the link below to reset your password:\n\n" +
-                token + "\n\n" +
-                "This link will expire in 1 hour.\n\n" +
-                "If you didn't request this, please ignore this email.\n\n" +
-                "Best regards,\n" +
-                "RangDong intern";
-    }
-
-    public void sendPasswordResetEmail(String email, String name, String resetToken) {
-        try {
             SimpleMailMessage message = new SimpleMailMessage();
             message.setTo(email);
-            message.setSubject("Password Reset Request");
-            message.setText(buildPersonalizedEmailContent(name, resetToken));
+            message.setSubject("Yêu cầu đặt lại mật khẩu");
+            message.setText(buildPasswordResetEmailContent(name, resetLink));
             message.setFrom("hatruonggiang222@gmail.com");
 
             mailSender.send(message);
@@ -54,21 +30,25 @@ public class EmailService {
         }
     }
 
-    private String buildPersonalizedEmailContent(String name, String token) {
-        return "Hi " + name + ",\n\n" +
-                "You requested a password reset. Click the link below to reset your password:\n\n" +
-                token + "\n\n" +
-                "This link will expire in 1 hour.\n\n" +
-                "If you didn't request this, please ignore this email.\n\n" +
-                "Best regards,\n" +
-                "RangDong intern";
+    private String buildPasswordResetEmailContent(String name, String link) {
+        return "Xin chào " + name + ",\n\n" +
+                "Bạn đã yêu cầu đặt lại mật khẩu. Vui lòng nhấn vào liên kết sau để thực hiện:\n\n" +
+                link + "\n\n" +
+                "Liên kết này sẽ hết hạn sau 30 phút.\n\n" +
+                "Nếu bạn không yêu cầu, hãy bỏ qua email này.\n\n" +
+                "Trân trọng,\n" +
+                "Đội ngũ hỗ trợ SmartHome";
     }
-    public void sendVerificationEmail(String email, String name, String verificationToken) {
+
+    // Gửi email xác minh
+    public void sendVerificationEmail(String email, String name, String token) {
         try {
+            String verifyLink = "https://your-frontend.com/verify-email?token=" + token;
+
             SimpleMailMessage message = new SimpleMailMessage();
             message.setTo(email);
-            message.setSubject("Email Verification Required");
-            message.setText(buildVerificationEmailContent(name, verificationToken));
+            message.setSubject("Xác minh tài khoản SmartHome");
+            message.setText(buildVerificationEmailContent(name, verifyLink));
             message.setFrom("hatruonggiang222@gmail.com");
 
             mailSender.send(message);
@@ -78,16 +58,14 @@ public class EmailService {
             throw new RuntimeException("Failed to send email");
         }
     }
-    private String buildVerificationEmailContent(String name, String token) {
-        return "Hi " + name + ",\n\n" +
-                "Welcome! Please verify your email by clicking the link below:\n\n" +
-                token + "\n\n" +
-                "This link will expire in 24 hours.\n\n" +
-                "If you did not register, please ignore this email.\n\n" +
-                "Best regards,\n" +
-                "RangDong intern";
+
+    private String buildVerificationEmailContent(String name, String link) {
+        return "Xin chào " + name + ",\n\n" +
+                "Chào mừng bạn đến với SmartHome! Vui lòng xác minh địa chỉ email bằng cách nhấn vào liên kết dưới đây:\n\n" +
+                link + "\n\n" +
+                "Liên kết này sẽ hết hạn trong 24 giờ.\n\n" +
+                "Nếu bạn không tạo tài khoản, hãy bỏ qua email này.\n\n" +
+                "Trân trọng,\n" +
+                "Đội ngũ SmartHome";
     }
-
-
-
 }

@@ -1,51 +1,87 @@
-//package com.smarthome.service;
-//
-//import com.smarthome.dto.*;
-//import com.smarthome.model.*;
-//import com.smarthome.repository.*;
-//import org.springframework.beans.factory.annotation.Autowired;
-//import org.springframework.stereotype.Service;
-//import java.util.List;
-//
-//@Service
-//public class RoomService {
-//    @Autowired
-//    private RoomRepository roomRepository;
-//    @Autowired
-//    private HouseRepository houseRepository;
-//
-//    public Room createRoom(Long houseId, RoomDTO dto) {
-//        House house = houseRepository.findById(houseId).orElseThrow();
-//        Room room = new Room();
-//        room.setName(dto.getName());
-//        room.setDescription(dto.getDescription());
-//        room.setHouse(house);
-//        return roomRepository.save(room);
-//    }
-//
-//    public Room updateRoom(Long id, RoomDTO roomDTO) {
-//        Room room = roomRepository.findById(id).orElseThrow();
-//        room.setName(roomDTO.getName());
-//        room.setDescription(roomDTO.getDescription());
-//        return roomRepository.save(room);
-//    }
-//
-//    public void deleteRoom(Long id) {
-//        roomRepository.deleteById(id);
-//    }
-//
-//    public List<Room> getRooms(Long houseId) {
-//        House house = houseRepository.findById(houseId).orElseThrow();
-//        return house.getRooms();
-//    }
-//
-//
-//    public RoomResponseDTO toDTO(Room room) {
-//        RoomResponseDTO dto = new RoomResponseDTO();
-//        dto.setId(room.getId());
-//        dto.setName(room.getName());
-//        dto.setDescription(room.getDescription());
-//        dto.setHouseId(room.getHouse().getId());
-//        return dto;
-//    }
-//}
+package com.smarthome.service;
+
+import com.smarthome.dto.*;
+import com.smarthome.exception.ResourceNotFoundException;
+import com.smarthome.model.*;
+import com.smarthome.repository.*;
+import com.smarthome.service.*;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+
+@Service
+public class RoomService {
+
+    @Autowired
+    private AuthService authService;
+
+    @Autowired
+    private HouseRepository houseRepository;
+
+    @Autowired
+    private RoomRepository roomRepository;
+
+
+    @Transactional
+    public void updateRoom(String token, Long roomId, AddRoomRequest request) {
+        System.out.println("→ Gọi updateRoom với roomId = " + roomId);
+
+        User currentUser = authService.getCurrentUser(token);
+        System.out.println("→ Lấy xong currentUser: " + currentUser.getId());
+
+        Room room = roomRepository.findById(roomId)
+                .orElseThrow(() -> {
+                    System.out.println("→ Không tìm thấy room");
+                    return new ResourceNotFoundException("Không tìm thấy phòng với ID: " + roomId);
+                });
+
+        House house = room.getHouse();
+        System.out.println("→ Room thuộc house: " + house.getId());
+
+        validateOwnership(currentUser, house);
+        System.out.println("→ Validate quyền thành công");
+
+        room.setName(request.getName());
+        room.setDescription(request.getDescription());
+        roomRepository.save(room);
+        System.out.println("→ Cập nhật thành công");
+    }
+
+
+    @Transactional
+    public void deleteRoom(String token, Long roomId) {
+        User currentUser = authService.getCurrentUser(token);
+
+        Room room = roomRepository.findById(roomId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Không tìm thấy phòng với ID: " + roomId));
+
+        House house = room.getHouse();
+        validateOwnership(currentUser, house);
+
+        roomRepository.delete(room);
+
+    }
+
+    @Transactional
+    public List<String> getDeviceNamesOfRoom(Long roomId) {
+        Room room = roomRepository.findById(roomId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy phòng"));
+
+        return room.getDevices().stream()
+                .map(Device::getName)
+                .toList();
+    }
+    /* ========= PRIVATE VALIDATORS ========= */
+
+
+    private void validateOwnership(User user, House house) {
+        if (!house.getOwner().getId().equals(user.getId())) {
+            throw new AccessDeniedException("Bạn không phải chủ sở hữu của căn nhà này");
+        }
+    }
+}
+

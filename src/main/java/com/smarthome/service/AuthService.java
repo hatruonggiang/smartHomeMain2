@@ -33,77 +33,94 @@ public class AuthService {
     @Autowired
     private EmailService emailService;
 
-    public AuthResponse login(String email, String password) {
+
+    public String login(String email, String password) {
         User user = validateLogin(email, password);
         String token = jwtTokenProvider.generateToken(user);
-        return buildAuthResponse(user, token);
+        return token;
     }
 
-
-    public UserResponse register(RegisterRequest request) {
-        validateEmailUniqueness(request.getEmail());
+    public void register(RegisterRequest request) {
+        validateRegisterRequest(request);
 
         User user = buildUserFromRequest(request);
-        User savedUser = userRepository.save(user);
-
-        String verificationToken = generateAndStoreVerificationToken(savedUser.getId());
-        sendVerificationEmail(savedUser, verificationToken);
-
-        return mapToUserResponse(savedUser);
+        userRepository.save(user);
     }
-
-
-    public void logout(String token) {
-        // Extract token from Bearer header
-        String actualToken = token.replace("Bearer ", "");
-
-        // Get user ID from token
-        Long userId = jwtTokenProvider.getUserIdFromToken(actualToken);
-    }
-
+    /**
+     * Gửi email chứa token đặt lại mật khẩu cho người dùng.
+     */
     public void forgotPassword(String email) {
         User user = userRepository.findByEmail(email);
         if (user == null) {
-            throw new AuthenticationException("Invalid email");
+            throw new AuthenticationException("Email không tồn tại trong hệ thống");
         }
 
-        // Generate password reset token
-        String resetToken = UUID.randomUUID().toString();
-//        redisService.storePasswordResetToken(user.getId(), resetToken);
+        // Tạo token ngẫu nhiên và đặt thời hạn sử dụng (30 phút)
+        String token = UUID.randomUUID().toString();
+        LocalDateTime expiryTime = LocalDateTime.now().plusMinutes(30);
 
-        // Send password reset email
-        emailService.sendPasswordResetEmail(user.getEmail(), user.getName(), resetToken);
+        user.setResetToken(token);
+        user.setResetTokenExpiry(expiryTime);
+        userRepository.save(user);
+
+        // Gửi email chứa token
+        emailService.sendPasswordResetEmail(
+                user.getEmail(),
+                user.getName(),
+                token
+        );
     }
-
+    /**
+     * Đặt lại mật khẩu dựa vào token khôi phục.
+     */
     public void resetPassword(String token, String newPassword) {
-//        Long userId = redisService.getUserIdFromPasswordResetToken(token);
+        User user = userRepository.findByResetToken(token);
+        if (user == null) {
+            throw new AuthenticationException("Token không hợp lệ");
+        }
 
-//        if (userId == null) {
-//            throw new AuthenticationException("Invalid or expired reset token");
-//        }
-//
-//        User user = userRepository.findById(userId)
-//                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
-//
-//        user.setPassword(passwordEncoder.encode(newPassword));
-//        user.setUpdatedAt(LocalDateTime.now());
-//        userRepository.save(user);
+        if (user.getResetTokenExpiry() == null || user.getResetTokenExpiry().isBefore(LocalDateTime.now())) {
+            throw new AuthenticationException("Token đã hết hạn");
+        }
 
-//        // Remove reset token from Redis
-//        redisService.deletePasswordResetToken(token);
-//
-//        // Invalidate all refresh tokens for this user
-//        redisService.deleteRefreshToken(userId);
+        if (newPassword == null || newPassword.length() < 6) {
+            throw new AuthenticationException("Mật khẩu mới phải có ít nhất 6 ký tự");
+        }
+
+        // Mã hoá và cập nhật mật khẩu
+        user.setPassword(passwordEncoder.encode(newPassword));
+        user.setResetToken(null); // Vô hiệu hoá token
+        user.setResetTokenExpiry(null);
+        user.setUpdatedAt(LocalDateTime.now());
+        userRepository.save(user);
     }
 
-    public User getCurrentUser(String token) {
-        String actualToken = token.replace("Bearer ", "");
-        Long userId = jwtTokenProvider.getUserIdFromToken(actualToken);
 
-        return userRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+
+    private User buildUserFromRequest(RegisterRequest request) {
+        return User.builder()
+                .email(request.getEmail())
+                .password(passwordEncoder.encode(request.getPassword()))
+                .name(request.getUserName())
+                .phone(request.getPhone())
+                .role("user")
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
+                .build();
     }
 
+
+    private void sendVerificationEmail(User user, String token) {
+        emailService.sendVerificationEmail(
+                user.getEmail(),
+                user.getName(),
+                token
+        );
+    }
+
+
+    //Validation
     private User validateLogin(String email, String password) {
         User user = userRepository.findByEmail(email);
         if (user == null) {
@@ -115,60 +132,51 @@ public class AuthService {
         }
         return user;
     }
-    private void validateEmailUniqueness(String email) {
+
+    private void validateRegisterRequest(RegisterRequest request) {
+        String email = request.getEmail();
+        String userName = request.getUserName();
+        String password = request.getPassword();
+        String confirmPassword = request.getConfirmPassword();
+
+        if (email == null || !email.matches("^\\S+@\\S+\\.\\S+$")) {
+            throw new AuthenticationException("Email không hợp lệ");
+        }
         if (userRepository.existsByEmail(email)) {
-            throw new AuthenticationException("Email already exists");
+            throw new AuthenticationException("Email đã tồn tại");
+        }
+        if (userName == null || userName.trim().isEmpty()) {
+            throw new AuthenticationException("Tên người dùng không được để trống");
+        }
+        if (password == null || password.length() < 6) {
+            throw new AuthenticationException("Password phải có ít nhất 6 ký tự");
+        }
+        if (!password.equals(confirmPassword)) {
+            throw new AuthenticationException("Password không khớp");
         }
     }
+    public User getCurrentUser(String token) {
+        // 1. Bỏ "Bearer " nếu có
+        if (token.startsWith("Bearer ")) {
+            token = token.substring(7);
+        }
 
-    private AuthResponse buildAuthResponse(User user, String token) {
-        return AuthResponse.builder()
-                .success(true)
-                .token(token)
-                .user(UserResponse.builder()
-                        .id(user.getId())
-                        .email(user.getEmail())
-                        .name(user.getName())
-                        .role(user.getRole())
-                        .permissions(List.of("read", "write", "delete", "admin"))
-                        .build())
-                .build();
+        // 2. Trích xuất userId từ token
+        Long userId = jwtTokenProvider.getUserIdFromToken(token);
+        if (userId == null) {
+            throw new AuthenticationException("Token không hợp lệ hoặc hết hạn");
+        }
+
+        // 3. Truy vấn DB
+        Optional<User> optionalUser = userRepository.findById(userId);
+        if (optionalUser.isEmpty()) {
+            throw new ResourceNotFoundException("Không tìm thấy người dùng với ID: " + userId);
+        }
+
+        return optionalUser.get();
     }
 
-    private User buildUserFromRequest(RegisterRequest request) {
-        return User.builder()
-                .email(request.getEmail())
-                .password(passwordEncoder.encode(request.getPassword()))
-                .name(request.getName())
-                .phone(request.getPhone())
-                .role("user")
-                .enabled(false)
-                .emailVerified(false)
-                .createdAt(LocalDateTime.now())
-                .updatedAt(LocalDateTime.now())
-                .build();
-    }
 
-    private String generateAndStoreVerificationToken(Long userId) {
-        String token = UUID.randomUUID().toString();
-//        redisService.storeEmailVerificationToken(userId, token);
-        return token;
-    }
 
-    private void sendVerificationEmail(User user, String token) {
-        emailService.sendVerificationEmail(
-                user.getEmail(),
-                user.getName(),
-                token
-        );
-    }
-
-    private UserResponse mapToUserResponse(User user) {
-        return UserResponse.builder()
-                .id(user.getId())
-                .email(user.getEmail())
-                .name(user.getName())
-                .build();
-    }
 
 }
