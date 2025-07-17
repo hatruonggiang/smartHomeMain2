@@ -115,9 +115,6 @@ public class DeviceService {
                     case DOOR_LOCK -> {
                         if (dto.getIsLocked() != null)    state.setIsLocked(Boolean.TRUE.equals(dto.getIsLocked()));
                     }
-                    case THERMOSTAT -> {
-                        if (dto.getTemperature() != null) state.setTemperature(dto.getTemperature());
-                    }
                     case CURTAIN -> {
                         if (dto.getPosition() != null)    state.setPosition(dto.getPosition());
                     }
@@ -152,9 +149,6 @@ public class DeviceService {
                         stateMap.put("brightness", state.getBrightness());
                         stateMap.put("color", state.getColor());
                     }
-                    case THERMOSTAT, AIR_CONDITIONER -> {
-                        stateMap.put("temperature", state.getTemperature());
-                    }
                     case SPEAKER -> {
                         stateMap.put("volume", state.getVolume());
                     }
@@ -164,10 +158,6 @@ public class DeviceService {
                     case CURTAIN -> {
                         stateMap.put("position", state.getPosition());
                     }
-                    // Các loại khác nếu cần
-                    case SWITCH, FAN, SENSOR, CAMERA -> {
-                        // không cần thêm gì nếu chỉ cần `isOn`
-                    }
                 }
             }
 
@@ -175,8 +165,6 @@ public class DeviceService {
             return dto;
         }).toList();
     }
-
-
     @Transactional
     public void deleteDevice(Long deviceId) {
         Device device = deviceRepository.findById(deviceId)
@@ -210,9 +198,6 @@ public class DeviceService {
                 case DOOR_LOCK -> {
                     if (dto.getIsLocked() != null)    state.setIsLocked(Boolean.TRUE.equals(dto.getIsLocked()));
                 }
-                case THERMOSTAT -> {
-                    if (dto.getTemperature() != null) state.setTemperature(dto.getTemperature());
-                }
                 case CURTAIN -> {
                     if (dto.getPosition() != null)    state.setPosition(dto.getPosition());
                 }
@@ -221,12 +206,6 @@ public class DeviceService {
 
         deviceRepository.save(device);
     }
-
-
-
-
-
-
     private DeviceState buildDeviceState(Device device, DeviceType type, DeviceStateDto dto) {
         DeviceState state = new DeviceState();
         state.setDevice(device);
@@ -238,7 +217,6 @@ public class DeviceService {
             }
             case SPEAKER -> state.setVolume(dto.getVolume());
             case DOOR_LOCK -> state.setIsLocked(Boolean.TRUE.equals(dto.getIsLocked()));
-            case THERMOSTAT -> state.setTemperature(dto.getTemperature());
             case CURTAIN -> state.setPosition(dto.getPosition());
         }
 
