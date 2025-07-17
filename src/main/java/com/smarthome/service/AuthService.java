@@ -12,13 +12,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 
 @Service
-@Transactional
+@Transactional(rollbackFor = Exception.class)
 public class AuthService {
 
     @Autowired
@@ -55,21 +52,25 @@ public class AuthService {
             throw new AuthenticationException("Email không tồn tại trong hệ thống");
         }
 
-        // Tạo token ngẫu nhiên và đặt thời hạn sử dụng (30 phút)
-        String token = UUID.randomUUID().toString();
-        LocalDateTime expiryTime = LocalDateTime.now().plusMinutes(30);
+        // Sinh mã OTP 6 chữ số
+        String otp = String.format("%06d", new Random().nextInt(1000000));
 
-        user.setResetToken(token);
+        // Thời hạn OTP là 10 phút
+        LocalDateTime expiryTime = LocalDateTime.now().plusMinutes(10);
+
+        // Lưu vào user (hoặc bảng riêng nếu bạn tách OTP riêng)
+        user.setResetToken(otp);
         user.setResetTokenExpiry(expiryTime);
         userRepository.save(user);
 
-        // Gửi email chứa token
-        emailService.sendPasswordResetEmail(
+        // Gửi email chứa mã OTP
+        emailService.sendOtpEmail(
                 user.getEmail(),
                 user.getName(),
-                token
+                otp
         );
     }
+
     /**
      * Đặt lại mật khẩu dựa vào token khôi phục.
      */
@@ -175,6 +176,25 @@ public class AuthService {
 
         return optionalUser.get();
     }
+    public UserProfileResponse getUserProfile(String token) {
+        // 1. Loại bỏ "Bearer " nếu có
+        if (token.startsWith("Bearer ")) {
+            token = token.substring(7);
+        }
+
+        // 2. Lấy user từ token
+        User user = getCurrentUser(token); // đã kiểm tra null + expired
+
+        // 3. Trả về DTO
+        return new UserProfileResponse(
+                user.getId(),
+                user.getName(),
+                user.getPhone(),
+                user.getEmail(),
+                user.getCreatedAt()
+        );
+    }
+
 
 
 

@@ -2,7 +2,6 @@ package com.smarthome.service;
 
 import com.smarthome.dto.*;
 import com.smarthome.enums.HouseMemberRole;
-import com.smarthome.exception.AuthenticationException;
 import com.smarthome.exception.ResourceNotFoundException;
 import com.smarthome.model.*;
 import com.smarthome.repository.*;
@@ -42,6 +41,7 @@ public class HouseService {
 
 
 
+
     public List<HouseResponse> getAllHouses(String token) {
         User currentUser = authService.getCurrentUser(token);
         List<HouseMember> memberships = houseMemberRepository.findByUserId(currentUser.getId());
@@ -75,18 +75,30 @@ public class HouseService {
 
 
 
+    @Transactional
     public void createHouse(String token, CreateHouseRequest request) {
         User currentUser = authService.getCurrentUser(token);
 
+        // Tạo đối tượng House
         House house = new House();
         house.setName(request.getName());
         house.setAddress(request.getAddress());
         house.setDescription(request.getDescription());
         house.setOwner(currentUser);
 
-        House saved = houseRepository.save(house);
+        // Lưu house vào DB
+        House savedHouse = houseRepository.save(house);
+
+        HouseMember ownerMember = HouseMember.builder()
+                .house(savedHouse)
+                .user(currentUser)
+                .role(HouseMemberRole.OWNER)
+                .build();
+
+        houseMemberRepository.save(ownerMember);
 
     }
+
 
     @Transactional
     public void addMemberToHouse(String token, AddMemberRequest request) {
@@ -104,11 +116,11 @@ public class HouseService {
     }
 
     @Transactional
-    public void addRoomToHouse(String token, AddRoomRequest request) {
+    public void addRoomToHouse(String token, Long id, AddRoomRequest request) {
         User user = authService.getCurrentUser(token);
 
-        House house = houseRepository.findById(request.getHouseId())
-                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy nhà với ID: " + request.getHouseId()));
+        House house = houseRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy nhà"));
 
         validateHouseOwnership(user, house);
 
@@ -116,8 +128,10 @@ public class HouseService {
         newRoom.setName(request.getName());
         newRoom.setDescription(request.getDescription());
         newRoom.setHouse(house);
+
         roomRepository.save(newRoom);
     }
+
     @Transactional
     public void deleteHouse(String token, Long houseId) {
         User currentUser = authService.getCurrentUser(token);

@@ -68,4 +68,32 @@ public class EmailService {
                 "Trân trọng,\n" +
                 "Đội ngũ SmartHome";
     }
+    public void sendOtpEmail(String toEmail, String name, String otp) {
+        try {
+            String subject = "Mã xác thực đặt lại mật khẩu";
+            String body = String.format(
+                    "Xin chào %s,\n\n" +
+                            "Mã xác thực để đặt lại mật khẩu của bạn là: %s\n" +
+                            "Mã này có hiệu lực trong 10 phút.\n\n" +
+                            "Nếu bạn không yêu cầu đặt lại mật khẩu, vui lòng bỏ qua email này.\n\n" +
+                            "Trân trọng,\n" +
+                            "Đội ngũ SmartHome",
+                    name, otp
+            );
+
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setTo(toEmail);
+            message.setSubject(subject);
+            message.setText(body);
+            message.setFrom("hatruonggiang222@gmail.com");
+
+            mailSender.send(message);
+            System.out.println("OTP email sent to: " + toEmail);
+        } catch (Exception e) {
+            System.err.println("Failed to send OTP email: " + e.getMessage());
+            throw new RuntimeException("Failed to send email");
+        }
+    }
+
+
 }

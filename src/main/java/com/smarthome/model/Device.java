@@ -19,6 +19,8 @@ public class Device {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    private boolean isOn;
+
     @Column(nullable = false)
     private String name;
 
@@ -87,6 +89,14 @@ public class Device {
 
     public LocalDateTime getUpdatedAt() {
         return updatedAt;
+    }
+
+    public boolean getIsOn() {
+        return isOn;
+    }
+
+    public void setisOn(boolean on) {
+        isOn = on;
     }
 
     public void setId(Long id) {

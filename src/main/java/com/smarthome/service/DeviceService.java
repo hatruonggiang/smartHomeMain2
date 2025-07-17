@@ -11,6 +11,7 @@ import com.smarthome.repository.*;
 import com.smarthome.dto.DeviceStateDto;
 
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -24,6 +25,8 @@ public class DeviceService {
     private DeviceRepository deviceRepository;
     @Autowired
     private RoomRepository roomRepository;
+    @Autowired
+    private DeviceStateRepository deviceStateRepository;
 
     @Transactional
     public void createDevice(Map<String, Object> request) {
@@ -135,9 +138,44 @@ public class DeviceService {
             dto.setName(device.getName());
             dto.setType(device.getType().name());
             dto.setRoomName(room.getName());
+            dto.setIsOn(device.getIsOn());
+
+            DeviceState state = deviceStateRepository.findByDevice(device)
+                    .orElse(null); // hoặc throw nếu cần
+
+            Map<String, Object> stateMap = new HashMap<>();
+            if (state != null) {
+                stateMap.put("isOn", state.getIsOn());
+
+                switch (device.getType()) {
+                    case LIGHT -> {
+                        stateMap.put("brightness", state.getBrightness());
+                        stateMap.put("color", state.getColor());
+                    }
+                    case THERMOSTAT, AIR_CONDITIONER -> {
+                        stateMap.put("temperature", state.getTemperature());
+                    }
+                    case SPEAKER -> {
+                        stateMap.put("volume", state.getVolume());
+                    }
+                    case DOOR_LOCK -> {
+                        stateMap.put("isLocked", state.getIsLocked());
+                    }
+                    case CURTAIN -> {
+                        stateMap.put("position", state.getPosition());
+                    }
+                    // Các loại khác nếu cần
+                    case SWITCH, FAN, SENSOR, CAMERA -> {
+                        // không cần thêm gì nếu chỉ cần `isOn`
+                    }
+                }
+            }
+
+            dto.setState(stateMap);
             return dto;
         }).toList();
     }
+
 
     @Transactional
     public void deleteDevice(Long deviceId) {
@@ -152,6 +190,10 @@ public class DeviceService {
 
         DeviceType type = device.getType();
         DeviceState state = device.getDeviceState();
+        if (dto.getIsOn() != null) {
+            state.setIsOn(dto.getIsOn());
+            device.setisOn(dto.getIsOn());
+        }
 
         if (state == null) {
             state = buildDeviceState(device, type, dto);

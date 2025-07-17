@@ -98,5 +98,22 @@ public class AuthController {
                     .body(new ApiResponse<>(false, "Đã xảy ra lỗi hệ thống", null));
         }
     }
+    @GetMapping("/profile")
+    public ResponseEntity<?> getUserProfile(@RequestHeader("Authorization") String authHeader) {
+        try {
+            UserProfileResponse userProfile = authService.getUserProfile(authHeader);
+            return ResponseEntity.ok(new ApiResponse<>(true, "Lấy thông tin người dùng thành công", userProfile));
+        } catch (AuthenticationException e) {
+            return ResponseEntity
+                    .status(HttpStatus.UNAUTHORIZED)
+                    .body(new ApiResponse<>(false, e.getMessage(), null));
+        } catch (Exception e) {
+            log.error("Lỗi hệ thống khi lấy thông tin người dùng", e);
+            return ResponseEntity
+                    .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>(false, "Đã xảy ra lỗi hệ thống", null));
+        }
+    }
+
 
 }

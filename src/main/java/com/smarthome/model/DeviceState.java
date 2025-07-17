@@ -18,6 +18,9 @@ public class DeviceState {
     @JoinColumn(name = "device_id", nullable = false)
     private Device device;
 
+    @Column(nullable = false)
+    private Boolean isOn = false;
+
     @Column(columnDefinition = "INT DEFAULT 0")
     private Integer brightness; // 0-100 for lights
 
@@ -92,6 +95,14 @@ public class DeviceState {
         return updatedAt;
     }
 
+    public Boolean getIsOn() {
+        return isOn;
+    }
+
+    public Boolean getLocked() {
+        return isLocked;
+    }
+
     public void setId(Long id) {
         this.id = id;
     }
@@ -135,4 +146,17 @@ public class DeviceState {
     public void setUpdatedAt(LocalDateTime updatedAt) {
         this.updatedAt = updatedAt;
     }
+
+    public void setIsOn(Boolean on) {
+        isOn = on;
+    }
+
+    public void setLocked(Boolean locked) {
+        isLocked = locked;
+    }
+
+    public Boolean getOn() {
+        return isOn;
+    }
+
 }

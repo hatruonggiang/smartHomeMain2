@@ -1,10 +1,14 @@
 package com.smarthome.dto;
 
+import java.util.Map;
+
 public class DeviceDto {
     private Long id;
     private String name;
     private String type;
     private String roomName;
+    private Boolean isOn;
+    private Map<String, Object> state; // Trường động tùy theo loại
 
     //Getter and Setter
 
@@ -24,6 +28,14 @@ public class DeviceDto {
         return roomName;
     }
 
+    public Boolean getIsOn() {
+        return isOn;
+    }
+
+    public void setIsOn(Boolean on) {
+        isOn = on;
+    }
+
     public void setId(Long id) {
         this.id = id;
     }
@@ -38,5 +50,12 @@ public class DeviceDto {
 
     public void setRoomName(String roomName) {
         this.roomName = roomName;
+    }
+    public Map<String, Object> getState() {
+        return state;
+    }
+
+    public void setState(Map<String, Object> state) {
+        this.state = state;
     }
 }

@@ -28,7 +28,7 @@ public class HouseController {
 
 
     @GetMapping
-    public ResponseEntity<ApiResponse<List<HouseResponse>>> getUserHouses(
+    public ResponseEntity<ApiResponse<List<HouseResponse>>> getAllHouses(
             @RequestHeader("Authorization") String authHeader) {
         try {
             String token = extractToken(authHeader);
@@ -115,13 +115,14 @@ public class HouseController {
                     .body(new ApiResponse<>(false, "Đã xảy ra lỗi hệ thống", null));
         }
     }
-    @PostMapping("/rooms")
+    @PostMapping("/{id}/rooms")
     public ResponseEntity<ApiResponse<?>> addRoomToHouse(
             @RequestHeader("Authorization") String authHeader,
+            @PathVariable Long id,
             @Valid @RequestBody AddRoomRequest request) {
         try {
             String token = extractToken(authHeader);
-            houseService.addRoomToHouse(token, request);
+            houseService.addRoomToHouse(token,id, request);
             return ResponseEntity
                     .ok()
                     .body(new ApiResponse<>(true, "Thêm phòng thành công", null));

@@ -1,6 +1,7 @@
 package com.smarthome.dto;
 
 public class DeviceStateDto {
+    private Boolean isOn;
     private Integer brightness;
     private Double temperature;
     private Integer volume;
@@ -34,6 +35,14 @@ public class DeviceStateDto {
         return isLocked;
     }
 
+    public Boolean getIsOn() {
+        return isOn;
+    }
+
+    public Boolean getLocked() {
+        return isLocked;
+    }
+
     public void setBrightness(Integer brightness) {
         this.brightness = brightness;
     }
@@ -57,5 +66,14 @@ public class DeviceStateDto {
     public void setIsLocked(Boolean islocked) {
         isLocked = islocked;
     }
+
+    public void setIsOn(Boolean on) {
+        isOn = on;
+    }
+
+    public void setLocked(Boolean locked) {
+        isLocked = locked;
+    }
+
 }
 
